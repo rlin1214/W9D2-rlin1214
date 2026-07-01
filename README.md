@@ -1,137 +1,219 @@
-# W9D2-rlin1214
-for homework
+# W9D2 Model Serving
 
-Assignment Submission Guidelines
+## Overview
 
-Follow these instructions
+This project implements a minimal machine learning model serving system using FastAPI. It provides:
 
-After-Class Assignment: Model Serving with REST API and Batch Inference
+* REST API for online inference
+* Batch inference using CSV files
+* Prometheus metrics for monitoring
+* Docker support for containerized deployment
 
-Estimated Time: 1 hour
+---
 
-Overview
-Build a minimal model serving system that demonstrates both online (REST API) and batch inference capabilities with basic monitoring.
+# Setup Instructions
 
-What You'll Build
-A FastAPI application that serves predictions via REST endpoint
-A batch inference script that processes CSV files
-Prometheus metrics for monitoring
-A Docker container to package everything
-Requirements
-Part 1: REST API (25 minutes)
-Create a FastAPI application with the following endpoints:
+## Prerequisites
 
-Required Endpoints:
+* Python 3.11.9
+* pip
+* Docker Desktop (optional, for Part 3)
 
-GET /health - Returns {"status": "ok"}
-POST /predict - Accepts input features and returns prediction
-GET /metrics - Exposes Prometheus metrics
-Predict Endpoint Specification:
+## Create and Activate a Virtual Environment
 
-Input (JSON):
+### Windows PowerShell
 
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+## Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# Run the Application Locally
+
+Start the FastAPI server:
+
+```bash
+python -m uvicorn app.main:app --reload
+```
+
+The application will be available at:
+
+```
+http://127.0.0.1:8000
+```
+
+Swagger documentation:
+
+```
+http://127.0.0.1:8000/docs
+```
+
+---
+
+# API Usage Examples
+
+## Health Check
+
+### Request
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+### Response
+
+```json
+{
+  "status": "ok"
+}
+```
+
+---
+
+## Predict
+
+### Request
+
+```bash
+curl -X POST "http://127.0.0.1:8000/predict" ^
+-H "Content-Type: application/json" ^
+-d "{\"x1\":1.5,\"x2\":2.3}"
+```
+
+### Request Body
+
+```json
 {
   "x1": 1.5,
   "x2": 2.3
 }
-Output (JSON):
+```
 
+### Example Response
+
+```json
 {
   "score": 0.85,
   "model_version": "v1.0"
 }
-Implementation Notes:
+```
 
-Use Pydantic for request/response validation
-Load your W9D1 baseline model (or create a simple LogisticRegression if needed)
-Track request count and latency using Prometheus Counter and Histogram
-Part 2: Batch Inference (20 minutes)
-Create batch_infer.py that:
+> **Note:** The score may vary depending on the trained Logistic Regression model.
 
-Reads an input CSV file with feature columns
-Loads your trained model
-Generates predictions for all rows
-Writes output CSV with original data plus a prediction column
-Prints processing statistics (rows processed, time taken)
-Usage:
+---
 
+## Metrics
+
+### Request
+
+```bash
+curl http://127.0.0.1:8000/metrics
+```
+
+### Example Response
+
+```text
+prediction_requests_total 5
+prediction_latency_seconds_count 5
+prediction_latency_seconds_sum 0.004
+```
+
+---
+
+# Batch Inference Usage
+
+Run the batch inference script:
+
+```bash
 python batch_infer.py data/input.csv data/predictions.csv
-Part 3: Docker Packaging (15 minutes)
-Create a Dockerfile that:
+```
 
-Uses python:3.11-slim as base image
-Installs dependencies from requirements.txt
-Copies application code
-Exposes port 8000
-Runs Uvicorn server
-Build and run commands should work:
+## Input Format
 
-docker build -t model-server:v1 .
-docker run -p 8000:8000 model-server:v1
-Deliverables
-Submit a GitHub repository containing:
+The input CSV must contain the following columns:
 
-your-repo/
-├── app/
-│   ├── __init__.py
-│   ├── main.py          # FastAPI application
-│   └── metrics.py       # Prometheus instrumentation (optional separate file)
-├── data/
-│   ├── input.csv        # Sample input (5-10 rows minimum)
-│   └── predictions.csv  # Sample output from batch script
-├── models/
-│   └── baseline.joblib  # Your trained model (or training script)
-├── batch_infer.py       # Batch inference script
-├── requirements.txt     # All dependencies
-├── Dockerfile
-├── README.md           # Setup and usage instructions
-└── screenshots/
-    └── metrics.png      # Screenshot of /metrics endpoint response
-README Requirements
-Your README.md must include:
+```csv
+x1,x2
+1.5,2.3
+0.2,0.8
+2.1,1.7
+3.0,3.2
+```
 
-Setup Instructions
+## Output Format
 
-How to install dependencies
-How to run the application locally
-API Usage Examples
+The output CSV contains the original data with an additional prediction column.
 
-Example curl commands for each endpoint
-Expected responses
-Batch Inference Usage
+Example:
 
-Command to run batch script
-Input/output format description
-Docker Instructions
+```csv
+x1,x2,prediction
+1.5,2.3,0.85
+0.2,0.8,0.13
+2.1,1.7,0.91
+3.0,3.2,0.99
+```
 
-Build command
-Run command
-How to test the containerized app
-Testing Your Work
-Before submission, verify:
+The script also prints processing statistics, including:
 
-[ ] uvicorn app.main:app --reload starts without errors
-[ ] curl http://localhost:8000/health returns 200
-[ ] curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d '{"x1":1.0,"x2":2.0}' returns valid prediction
-[ ] curl http://localhost:8000/metrics shows prometheus metrics
-[ ] python batch_infer.py data/input.csv data/predictions.csv creates output file
-[ ] Docker container builds and runs successfully
-[ ] All endpoints accessible from container on http://localhost:8000
-Grading Rubric (10 points)
-Component	Points	Criteria
-REST API	3	/predict endpoint works with proper schema, returns score and version
-Batch Inference	3	Script successfully processes CSV and generates predictions
-Monitoring	2	/metrics endpoint exposes Counter and Histogram metrics
-Docker	1	Container builds and runs, app accessible on port 8000
-Documentation	1	README includes clear setup and usage instructions
-Hints
-Start with the in-class examples and modify them incrementally
-Test each endpoint individually before moving to the next part
-Use joblib.dump() and joblib.load() for model persistence
-Keep your model simple - a LogisticRegression on 2 features is sufficient
-If you get stuck on Docker, ensure the app works locally first
-Common Issues
-Port already in use: Change to a different port like 8001
-Module not found: Check that app/__init__.py exists
-Docker connection refused: Use --host 0.0.0.0 in CMD, not 127.0.0.1
-Metrics not showing: Import prometheus_client and call counter.inc() before returning
+* Number of rows processed
+* Processing time
+* Output file location
+
+---
+
+# Docker Instructions
+
+## Build the Docker Image
+
+```bash
+docker build -t w9d2-model-serving .
+```
+
+## Run the Container
+
+```bash
+docker run -p 8000:8000 w9d2-model-serving
+```
+
+The API will be available at:
+
+```
+http://127.0.0.1:8000
+```
+
+## Test the Containerized Application
+
+Health endpoint:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Prediction endpoint:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/predict" ^
+-H "Content-Type: application/json" ^
+-d "{\"x1\":1.5,\"x2\":2.3}"
+```
+
+Metrics endpoint:
+
+```bash
+curl http://127.0.0.1:8000/metrics
+```
+
+Swagger UI:
+
+```
+http://127.0.0.1:8000/docs
+```
